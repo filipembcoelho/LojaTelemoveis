@@ -2,73 +2,115 @@ package com.demo;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.util.ArrayList;
 import java.util.Scanner;
 
-import com.loja.model.Cliente;
+public class Main /* extends Object */ {
 
-public class Main {
+	static String url = "jdbc:mysql://localhost:3306"; // Connection URL -> Connection String
+	static String database = "lojatelemoveis?allowMultiQueries=true";
+	static String finalUrl = url + "/" + database;
+
+	static String username = "root";
+	static String password = "Pa$$w0rd"; // S3gr3d0
+
+	static Scanner scanner = new Scanner(System.in);
 
 	public static void main(String[] args) {
 
-		ArrayList<Cliente> clientes = new ArrayList<>();
+		// SQL Injection
 
-		String url = "jdbc:mysql://localhost:3306"; // Connection URL -> Connection String
-		String database = "lojatelemoveis";
-		String finalUrl = url + "/" + database;
+		// getById(5);
+		do {
+			System.out.print("Pesquise por nome: ");
+			String nome = scanner.nextLine();
 
-		String username = "root";
-		String password = "Pa$$w0rd"; // S3gr3d0
+			getByNome(nome);
+		} while (true);
 
+	}
+
+	private static void sqlPrompt() {
+		boolean exit = false;
+		do {
+			System.out.print("MySQL> ");
+			String query = scanner.nextLine();
+
+			if (query.equals(".exit")) {
+				exit = true;
+			} else {
+				executeQuery(query);
+				exit = false;
+			}
+
+		} while (!exit);
+	}
+
+	private static void executeQuery(String query) {
 		try (Connection conn = DriverManager.getConnection(finalUrl, username, password)) {
-
-			String query = "SELECT * FROM clientes;";
 
 			Statement stmt = conn.createStatement();
 
-			ResultSet rs = stmt.executeQuery(query);
+			boolean exec = stmt.execute(query);
 
-			// int affectedRows = stmt.executeUpdate("DELETE * FROM clientes WHERE id =
-			// 1;");
-
-			while (rs.next()) {
-
-				// Mapeamento entidadeBD -> Objeto Java
-				int id = rs.getInt(1);
-				String nome = rs.getString(2);
-				String nif = rs.getString(3);
-
-				Cliente cliente = new Cliente(id, nome, nif);
-				clientes.add(cliente);
-
+			if (exec) {
+				// SELECT
+				ResultSet rs = stmt.getResultSet();
+				while (rs.next()) {
+					System.out.println(rs.getInt(1) + " " + rs.getObject(2));
+				}
+			} else {
+				// INSERT / UPDATE / DELETE
+				int affectedRows = stmt.getUpdateCount();
+				System.out.println(affectedRows + (affectedRows > 1 ? " rows" : " row"));
 			}
 
 		} catch (SQLException e) {
 			System.out.println("Erro a comunicar com BD: " + e.getMessage());
 		}
+	}
 
-		for (int i = 0; i < clientes.size(); i++) {
-			System.out.println(clientes.get(i));
+	private static void getById(int id) {
+		try (Connection conn = DriverManager.getConnection(finalUrl, username, password)) {
+
+			Statement stmt = conn.createStatement();
+
+			String query = "SELECT * FROM clientes" + " WHERE id = " + id;
+
+			ResultSet rs = stmt.executeQuery(query);
+
+			while (rs.next()) {
+				System.out.println(rs.getInt(1) + " " + rs.getString(2));
+			}
+
+		} catch (SQLException e) {
+			System.out.println("Erro a comunicar com BD: " + e.getMessage());
 		}
-
 	}
 
-	private static void createCliente() {
-		Scanner scanner = new Scanner(System.in);
+	private static void getByNome(String nome) {
+		try (Connection conn = DriverManager.getConnection(finalUrl, username, password)) {
 
-		System.out.print("Introduza o seu id: ");
-		int id = Integer.parseInt(scanner.nextLine());
+			String query = "SELECT * FROM clientes"
+						 + " WHERE nome LIKE ?";
 
-		System.out.print("Introduza o seu nome: ");
-		String nome = scanner.nextLine();
+			PreparedStatement stmt = conn.prepareStatement(query);
 
-		System.out.print("Introduza o seu nif: ");
-		String nif = scanner.nextLine();
+			stmt.setString(1, nome + "%");
 
-		Cliente c = new Cliente(nome, nif);
+			System.out.println(query + "\n");
+
+			ResultSet rs = stmt.executeQuery();
+
+			while (rs.next()) {
+				System.out.println(rs.getInt(1) + " " + rs.getString(2));
+			}
+
+		} catch (SQLException e) {
+			System.out.println("Erro a comunicar com BD: " + e.getMessage());
+		}
 	}
-
 }
